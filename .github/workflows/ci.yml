@@ -1,0 +1,40 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Create Virtual Environment and Install Dependencies
+        run: |
+          python3 -m venv venv
+          . venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Transformation Script
+        run: |
+          . venv/bin/activate
+          python converter/scapolite2ansible.py -i rules/ -o "${{ github.workspace }}/generated/automated_hardening.yml"
+
+      - name: Run Combined Playbook
+        run: |
+          . venv/bin/activate
+          ansible-playbook -i "${{ github.workspace }}/inventory.ini" "${{ github.workspace }}/generated/automated_hardening.yml"
