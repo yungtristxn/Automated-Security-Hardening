@@ -1,40 +1,54 @@
-name: CI Pipeline
+name: Validate converter
 
 on:
   push:
-    branches: [main]
   pull_request:
-    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  build:
-    runs-on: self-hosted
-
+  python:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.12', '3.14']
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v2
-
-      - name: Cache pip dependencies
-        uses: actions/cache@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -v
 
-      - name: Create Virtual Environment and Install Dependencies
+  ansible:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements-controller.txt -r requirements-dev.txt
+      - run: python -m ruff check scapolite_ansible converter scripts tests
+      - run: python -m ruff format --check scapolite_ansible converter scripts tests
+      - run: ansible-galaxy collection install -r collections/requirements.yml
+      - run: python scripts/verify_ansible.py --output-dir local/ci-ansible
+      - name: Verify the external research corpus at its recorded revision
+        shell: bash
         run: |
-          python3 -m venv venv
-          . venv/bin/activate
-          pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Run Transformation Script
+          git clone --quiet https://github.com/tum-i4/disa-windows-server-2019.git "$RUNNER_TEMP/scapolite-corpus"
+          git -C "$RUNNER_TEMP/scapolite-corpus" checkout --detach e3a8b93ab054e38b2b545e611ff9d9073e35c5f2
+          python scripts/verify_corpus.py "$RUNNER_TEMP/scapolite-corpus" --output-dir local/ci-corpus
+          ansible-playbook -i 'windows,' local/ci-corpus/selected.yml --syntax-check
+      - name: Build and smoke-test the installed wheel
+        shell: bash
         run: |
-          . venv/bin/activate
-          python converter/scapolite2ansible.py -i rules/ -o "${{ github.workspace }}/generated/automated_hardening.yml"
-
-      - name: Run Combined Playbook
-        run: |
-          . venv/bin/activate
-          ansible-playbook -i "${{ github.workspace }}/inventory.ini" "${{ github.workspace }}/generated/automated_hardening.yml"
+          python -m build
+          python -m venv "$RUNNER_TEMP/scapolite-wheel"
+          "$RUNNER_TEMP/scapolite-wheel/bin/python" -m pip install dist/*.whl
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/scapolite-wheel/bin/scapolite-ansible" --version
+          "$RUNNER_TEMP/scapolite-wheel/bin/scapolite-ansible" compile "$GITHUB_WORKSPACE/rules" -o "$RUNNER_TEMP/wheel-smoke.yml"

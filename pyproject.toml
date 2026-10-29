@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools==84.2.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scapolite-ansible"
+version = "0.1.0"
+description = "A validated Scapolite 0.51 Windows registry to Ansible converter"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+dependencies = ["PyYAML==6.0.3"]
+
+[project.scripts]
+scapolite-ansible = "scapolite_ansible.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["scapolite_ansible*"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+# These checkout commands deliberately add the repository root before importing.
+"scripts/*.py" = ["E402"]
+"converter/scapolite2ansible.py" = ["E402"]

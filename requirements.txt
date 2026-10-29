@@ -1,3 +1,1 @@
-pyyaml
-ansible
-pywinrm
+PyYAML==6.0.3

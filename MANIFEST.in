@@ -1,0 +1,7 @@
+include LICENSE README.md inventory.ini requirements*.txt
+recursive-include converter *.py
+recursive-include docs *.md
+recursive-include rules *.yml
+recursive-include collections *.yml
+recursive-include scripts *.py
+recursive-include tests *.py *.md *.yml *.ps1 LICENSE

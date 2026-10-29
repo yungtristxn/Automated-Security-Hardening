@@ -1,0 +1,18 @@
+- name: Manage a fixture on one explicitly designated disposable Windows VM
+  hosts: windows
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Require an explicit disposable target and fixture mode
+      ansible.builtin.assert:
+        that:
+          - scapolite_disposable_vm | default(false) | bool
+          - groups['windows'] | length == 1
+          - fixture_mode in ['Seed', 'Baseline', 'Applied', 'Cleanup']
+          - fixture_scenario in ['absent', 'wrong_type', 'outside', 'compliant']
+    - name: Seed or verify registry state independently of win_regedit
+      ansible.windows.win_powershell:
+        script: "{{ lookup('ansible.builtin.file', playbook_dir + '/RegistryFixture.ps1') }}"
+        parameters:
+          Mode: "{{ fixture_mode }}"
+          Scenario: "{{ fixture_scenario }}"

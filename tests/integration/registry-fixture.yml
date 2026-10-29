@@ -1,0 +1,40 @@
+scapolite:
+  class: rule
+  version: '0.51'
+id: registry-acceptance
+id_namespace: org.scapolite.example
+title: Disposable Windows registry acceptance fixture
+implementations:
+  - relative_id: '01'
+    automations:
+      - system: org.scapolite.automation.compound
+        automations:
+          - system: org.scapolite.implementation.windows_registry
+            config: Computer
+            registry_key: Software\ScapoliteConverterAcceptance
+            value_name: ExactDword
+            action: DWORD:7
+          - system: org.scapolite.implementation.windows_registry
+            config: Computer
+            registry_key: Software\ScapoliteConverterAcceptance
+            value_name: ExactText
+            action: SZ:hello
+          - system: org.scapolite.implementation.windows_registry
+            config: Computer
+            registry_key: Software\ScapoliteConverterAcceptance
+            value_name: Minimum
+            action: DWORD:15
+            constraints:
+              min: 15
+          - system: org.scapolite.implementation.windows_registry
+            config: Computer
+            registry_key: Software\ScapoliteConverterAcceptance
+            value_name: Maximum
+            action: DWORD:10
+            constraints:
+              max: 10
+          - system: org.scapolite.implementation.windows_registry
+            config: Computer
+            registry_key: Software\ScapoliteConverterAcceptance
+            value_name: ''
+            action: SZ:default
